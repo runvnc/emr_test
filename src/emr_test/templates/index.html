@@ -83,6 +83,23 @@
         .save-btn:hover {
             background-color: #34495e;
         }
+        .toast {
+            visibility: hidden;
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -160,6 +177,9 @@
         <button class="save-btn">Save Visit Record</button>
     </div>
 
+    <!-- Toast notification -->
+    <div class="toast" id="saveToast">Record saved successfully!</div>
+
     <script>
         // Set current date and time for visit
         document.getElementById('visit-date').value = new Date().toISOString().slice(0, 16);
@@ -172,9 +192,13 @@
             });
         });
 
-        // Add save functionality
+        // Add save functionality with toast
         document.querySelector('.save-btn').addEventListener('click', () => {
-            alert('Visit record saved successfully!');
+            const toast = document.getElementById('saveToast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
         });
     </script>
 </body>
