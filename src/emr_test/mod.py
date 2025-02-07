@@ -102,8 +102,6 @@ async def open_emr_record(record_data: Dict[str, Any], headless: bool = False, c
         save_button.click()
         time.sleep(0.5)
 
-        # Don't close automatically - let user control timing
-        input("Press Enter to close EMR...")
         return "EMR record opened and updated successfully"
 
     except Exception as e:
