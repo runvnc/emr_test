@@ -7,13 +7,20 @@ import os
 import time
 from typing import Dict, Any
 
-def _get_driver(headless: bool = False) -> webdriver.Chrome:
-    """Create and configure a Chrome WebDriver."""
-    options = webdriver.ChromeOptions()
-    options.add_argument('--no-sandbox')
-    if headless:
-        options.add_argument('--headless')
-    return webdriver.Chrome(options=options)
+# Global driver instance to maintain browser session
+_driver = None
+
+def _get_or_create_driver(headless: bool = False) -> webdriver.Chrome:
+    """Get existing driver or create new one."""
+    global _driver
+    if _driver is None:
+        options = webdriver.ChromeOptions()
+        options.add_argument('--no-sandbox')
+        if headless:
+            options.add_argument('--headless')
+        _driver = webdriver.Chrome(options=options)
+        _driver.maximize_window()
+    return _driver
 
 def _type_with_delay(element, text: str, delay: float = 0.01) -> None:
     """Type text with a realistic delay."""
@@ -53,14 +60,44 @@ async def open_emr_record(record_data: Dict[str, Any], headless: bool = False, c
         "headless": false
     }}
     """
-    driver = _get_driver(headless)
     try:
-        # Setup page
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        html_path = os.path.join(current_dir, 'templates', 'index.html')
-        driver.get(f'file://{html_path}')
-        driver.maximize_window()
+        driver = _get_or_create_driver(headless)
         wait = WebDriverWait(driver, 10)
+
+        # Only load page if it's not already loaded
+        if not driver.current_url.endswith('index.html'):
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            html_path = os.path.join(current_dir, 'templates', 'index.html')
+            driver.get(f'file://{html_path}')
+
+        # Update fields based on provided data
+        await update_emr_fields(record_data)
+        return "EMR record opened successfully"
+
+    except Exception as e:
+        return f"Error opening EMR record: {str(e)}"
+
+@command()
+async def update_emr_fields(record_data: Dict[str, Any], context=None) -> str:
+    """Update EMR fields with new data.
+    
+    Args:
+        record_data: Dictionary containing fields to update (same structure as open_emr_record)
+    
+    Example:
+    { "update_emr_fields": { 
+        "record_data": {
+            "vitals": {"pulse": "88"},
+            "assessment": "Updated assessment..."
+        }
+    }}
+    """
+    try:
+        global _driver
+        if _driver is None:
+            return "Error: No active EMR session. Please open record first."
+
+        wait = WebDriverWait(_driver, 10)
 
         # Update fields based on provided data
         if record_data.get('name'):
@@ -97,15 +134,29 @@ async def open_emr_record(record_data: Dict[str, Any], headless: bool = False, c
             elem.clear()
             _type_with_delay(elem, record_data['plan'])
 
-        # Save changes
+        # Click save button
         save_button = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "save-btn")))
         save_button.click()
         time.sleep(0.5)
 
-        return "EMR record opened and updated successfully"
+        return "EMR fields updated successfully"
 
     except Exception as e:
-        return f"Error opening EMR record: {str(e)}"
+        return f"Error updating EMR fields: {str(e)}"
+
+@command()
+async def close_emr(context=None) -> str:
+    """Close the EMR browser session.
     
-    finally:
-        driver.quit()
+    Example:
+    { "close_emr": {} }
+    """
+    try:
+        global _driver
+        if _driver:
+            _driver.quit()
+            _driver = None
+            return "EMR session closed successfully"
+        return "No active EMR session to close"
+    except Exception as e:
+        return f"Error closing EMR: {str(e)}"
