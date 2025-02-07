@@ -1,0 +1,10 @@
+{
+    "name": "emr_test",
+    "version": "0.1.0",
+    "description": "EMR demo plugin for testing and demonstration purposes",
+    "author": "Assistant",
+    "license": "MIT",
+    "dependencies": [
+        "selenium>=4.0.0"
+    ]
+}
